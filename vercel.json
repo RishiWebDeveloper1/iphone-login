@@ -1,0 +1,27 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "api/vercel.js",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "client/index.html",
+            "use": "@vercel/static"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/login",
+            "dest": "api/vercel.js"
+        },
+        {
+            "src": "/passcode",
+            "dest": "api/vercel.js"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/client/index.html"
+        }
+    ]
+}

